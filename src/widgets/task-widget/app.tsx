@@ -53,7 +53,6 @@ const AppComponent: React.FunctionComponent = () => {
           method: 'GET',
         }
       )
-      console.log('Project custom fields:', projectFields)
 
       return projectFields
     } catch (e) {
@@ -103,7 +102,6 @@ const AppComponent: React.FunctionComponent = () => {
   const createCustomField = useCallback(async (projectList: Project[]) => {
     try {
       const listOfCustomFields = await getCustomFields()
-      console.log(listOfCustomFields)
 
       let customField = listOfCustomFields.find(
         (field: GlobalCustomField) => field.name === 'Flag'
@@ -180,8 +178,6 @@ const AppComponent: React.FunctionComponent = () => {
       }))
     )
     setFlagValues(fetchedFlagValues)
-
-    console.log('📌 Projects with Flag values:', flagValues)
   }, [])
 
   // change the flag value
@@ -210,8 +206,6 @@ const AppComponent: React.FunctionComponent = () => {
           headers: { 'Content-Type': 'application/json' },
         }
       )
-
-      console.log(`Flag updated to ${newFlag} for project ${projectId}`)
 
       // also update flagValues
       setFlagValues((prevFlags) =>
