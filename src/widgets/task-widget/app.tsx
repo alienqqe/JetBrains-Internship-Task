@@ -1,3 +1,4 @@
+/* eslint-disable no-magic-numbers */
 /* eslint-disable no-console */
 import React, { memo, useCallback, useEffect, useState } from 'react'
 import Toggle from '@jetbrains/ring-ui-built/components/toggle/toggle'
@@ -14,6 +15,10 @@ interface ProjectCustomField {
   field: {
     name: string
     id: string
+    localisedName: string
+  }
+  value: {
+    name: string
   }
   id: string
   emptyFieldText: string
@@ -84,13 +89,19 @@ const AppComponent: React.FunctionComponent = () => {
             {
               method: 'POST',
               body: {
-                field: { id: customField.id, name: 'Flag' },
+                field: {
+                  id: customField.id,
+                  name: 'Flag',
+                },
+
                 $type: 'SimpleProjectCustomField',
-                emptyFieldText: 'false',
               },
               headers: { 'Content-Type': 'application/json' },
             }
           )
+
+          await new Promise((res) => setTimeout(res, 2000)) // Wait 2 sec
+          await getCustomFields()
         } catch (e) {
           console.error(`Failed to attach custom field to ${project.id}:`, e)
         }
@@ -101,7 +112,7 @@ const AppComponent: React.FunctionComponent = () => {
   // function to create customField on the backend and attach it to the projects
   const createCustomField = useCallback(async (projectList: Project[]) => {
     try {
-      const listOfCustomFields = await getCustomFields()
+      let listOfCustomFields = await getCustomFields()
 
       let customField = listOfCustomFields.find(
         (field: GlobalCustomField) => field.name === 'Flag'
@@ -116,7 +127,7 @@ const AppComponent: React.FunctionComponent = () => {
             body: {
               name: 'Flag',
               fieldType: {
-                id: 'enum[*]',
+                id: 'text',
               },
               emptyFieldText: 'false',
               isDisplayedInIssueList: true,
@@ -127,7 +138,15 @@ const AppComponent: React.FunctionComponent = () => {
         )
       }
 
+      // Ensure we get the latest list of fields
+      await new Promise((res) => setTimeout(res, 2000)) // Small delay for backend sync
+      listOfCustomFields = await getCustomFields()
+      customField = listOfCustomFields.find(
+        (field: GlobalCustomField) => field.name === 'Flag'
+      )
+
       if (!customField) {
+        console.error('Failed to create custom field.')
         return
       }
 
@@ -141,7 +160,7 @@ const AppComponent: React.FunctionComponent = () => {
   const fetchFlagValue = async (projectId: string) => {
     try {
       const projectFields: ProjectCustomField[] = await host.fetchYouTrack(
-        `admin/projects/${projectId}/customFields?fields=id,canBeEmpty,emptyFieldText,project(id,name),field(id,name)`,
+        `admin/projects/${projectId}/customFields?fields=id,canBeEmpty,emptyFieldText,project(id,name),field(id,name),value(name)`,
         { method: 'GET' }
       )
 
@@ -154,7 +173,7 @@ const AppComponent: React.FunctionComponent = () => {
         return null
       }
 
-      return flagField.emptyFieldText === 'true' // Convert to boolean
+      return flagField?.emptyFieldText === 'true' // Convert to boolean
     } catch (error) {
       console.error(`❌ Error fetching "Flag" value for ${projectId}:`, error)
       return null
@@ -183,15 +202,23 @@ const AppComponent: React.FunctionComponent = () => {
   // change the flag value
   const updateFlag = async (projectId: string, newFlag: boolean) => {
     try {
-      const projectFields = await getProjectCustomFields(projectId)
+      let flagField: ProjectCustomField | undefined
+      let retries = 5
 
-      // get our customField field
-      const flagField = projectFields.find(
-        (field) => field.field.name === 'Flag'
-      )
+      while (retries > 0) {
+        const projectFields = await getProjectCustomFields(projectId)
 
+        flagField = projectFields.find((field) => field.field.name === 'Flag')
+        if (flagField) {
+          break
+        }
+
+        console.warn(`Flag field not found, retrying...)`)
+        retries--
+        await new Promise((res) => setTimeout(res, 1000)) // Wait 1 second before retrying
+      }
       if (!flagField) {
-        console.error('Flag field is not found')
+        console.error('Flag field is not found after 5 retries')
         return
       }
 
@@ -201,7 +228,7 @@ const AppComponent: React.FunctionComponent = () => {
         {
           method: 'POST',
           body: {
-            emptyFieldText: `${newFlag.toString()}`,
+            emptyFieldText: `${newFlag.toString()}`, // NOTE: I recognize, that saving value in the emptyFieldText is not the best idea, but i couldn't find a better solution in the docs
           },
           headers: { 'Content-Type': 'application/json' },
         }
@@ -216,13 +243,20 @@ const AppComponent: React.FunctionComponent = () => {
     }
   }
   useEffect(() => {
-    fetchProjects()
+    const initialize = async () => {
+      await fetchProjects() // Fetch projects first
+    }
+    initialize()
   }, [])
 
   useEffect(() => {
-    if (projects.length > 0) {
-      createCustomField(projects)
+    const setupFieldAndRefresh = async () => {
+      if (projects.length > 0) {
+        await createCustomField(projects) // Ensure the field is created
+        await fetchProjects() // Refresh projects AFTER ensuring field exists
+      }
     }
+    setupFieldAndRefresh()
   }, [projects])
 
   return (

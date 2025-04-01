@@ -12,7 +12,7 @@
     {
       "key": "task-widget",
       "name": "Task-Widget",
-      "indexPath": "./src/widgets/task-widget/index.html",
+      "indexPath": "task-widget/index.html",
       "extensionPoint": "MAIN_MENU_ITEM",
       "iconPath": "task-widget/widget-icon.svg",
       "description": "Widget Description"
