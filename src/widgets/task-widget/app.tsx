@@ -15,10 +15,6 @@ interface ProjectCustomField {
   field: {
     name: string
     id: string
-    localisedName: string
-  }
-  value: {
-    name: string
   }
   id: string
   emptyFieldText: string
@@ -130,7 +126,6 @@ const AppComponent: React.FunctionComponent = () => {
                 id: 'text',
               },
               emptyFieldText: 'false',
-              isDisplayedInIssueList: true,
               isAutoAttached: false,
               isPublic: true,
             },
@@ -175,7 +170,7 @@ const AppComponent: React.FunctionComponent = () => {
 
       return flagField?.emptyFieldText === 'true' // Convert to boolean
     } catch (error) {
-      console.error(`❌ Error fetching "Flag" value for ${projectId}:`, error)
+      console.error(`Error fetching flag value for ${projectId}:`, error)
       return null
     }
   }
